@@ -66,6 +66,7 @@ public final class HTTPSession {
       }
       writeLine("");
       channel.write(ByteBuffer.wrap(response.getContent()));
+      System.out.println("Send HTTP response");
     } catch (IOException ex) {
       // slow silently
     }

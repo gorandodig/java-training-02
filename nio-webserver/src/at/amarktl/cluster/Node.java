@@ -152,7 +152,9 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
           response.append(line);
         }
 
-        return response.toString().getBytes(Charset.forName("UTF-8"));
+        byte[] b = response.toString().getBytes(Charset.forName("UTF-8"));
+        System.out.println("[" + name + "@" + address + ":" + port + "] finished loading file from URI [" + f.getAbsolutePath() + "]");
+        return b;
       } finally {
         if (reader != null) {
           reader.close();

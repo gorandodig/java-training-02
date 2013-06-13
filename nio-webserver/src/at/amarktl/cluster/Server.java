@@ -245,7 +245,9 @@ public class Server extends UnicastRemoteObject implements IServer {
       }
     }
 
+    System.out.println("****************************************************************************************");
     System.out.println("Handling Request: " + request);
+    System.out.println("****************************************************************************************");
 
     service.execute(new Handle(session, request, nodes.next()));
   }
