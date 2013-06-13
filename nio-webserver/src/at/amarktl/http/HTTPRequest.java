@@ -43,4 +43,10 @@ public class HTTPRequest {
   public String getHead(String key) {
     return headers.get(key);
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return "[" + raw + "]";
+  }
 }

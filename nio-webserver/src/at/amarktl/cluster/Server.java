@@ -73,6 +73,8 @@ public class Server extends UnicastRemoteObject implements IServer {
                   client.register(selector, SelectionKey.OP_READ);
                   // report an error immediatly if there are no cluster nodes
 
+                  System.out.println("Accepted new Client [" + client.getRemoteAddress() + "]");
+
                   if (nodes.isEmpty()) {
                     HTTPSession session = (HTTPSession) key.attachment();
                     // create it if it doesnt exist
@@ -138,7 +140,7 @@ public class Server extends UnicastRemoteObject implements IServer {
 
   private static final long serialVersionUID = 1L;
 
-  private final ClusterNodeList nodes = new ClusterNodeList();
+  final ClusterNodeList nodes = new ClusterNodeList();
   private int portHTTP;
   private int portRMI;
   private final ExecutorService service;
@@ -242,6 +244,8 @@ public class Server extends UnicastRemoteObject implements IServer {
         session.close();
       }
     }
+
+    System.out.println("Handling Request: " + request);
 
     service.execute(new Handle(session, request, nodes.next()));
   }
