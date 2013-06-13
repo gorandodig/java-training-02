@@ -45,6 +45,7 @@ public class Server extends UnicastRemoteObject implements IServer {
 
     public void start() {
       service.execute(new Runnable() {
+        @Override
         public void run() {
           while (isRunning.get()) {
             int readyCount;
@@ -70,7 +71,25 @@ public class Server extends UnicastRemoteObject implements IServer {
                   client.configureBlocking(false);
                   // show out intentions
                   client.register(selector, SelectionKey.OP_READ);
-                  // read from the connection
+                  // report an error immediatly if there are no cluster nodes
+
+                  if (nodes.isEmpty()) {
+                    HTTPSession session = (HTTPSession) key.attachment();
+                    // create it if it doesnt exist
+                    if (session == null) {
+                      session = new HTTPSession(client);
+                      key.attach(session);
+                    }
+                    try {
+                      HTTPResponse error = new HTTPResponse();
+                      error.setContent(getSevereErrorPage(new IllegalStateException("No Cluster Nodes connected")));
+                      session.sendResponse(error);
+                      continue;
+                    } finally {
+                      session.close();
+                    }
+                  }
+
                 } else if (key.isReadable()) {
                   // get the client
                   SocketChannel client = (SocketChannel) key.channel();
@@ -91,10 +110,14 @@ public class Server extends UnicastRemoteObject implements IServer {
                     if (line.isEmpty()) {
                       HTTPRequest request = new HTTPRequest(session.getContent());
                       if (!request.getMethod().equals("GET")) {
-                        HTTPResponse error = new HTTPResponse();
-                        error.setContent(getSevereErrorPage(new UnsupportedOperationException("Unsupported Operation: " + request.getMethod())));
-                        session.sendResponse(error);
-                        continue;
+                        try {
+                          HTTPResponse error = new HTTPResponse();
+                          error.setContent(getSevereErrorPage(new UnsupportedOperationException("Unsupported Operation: " + request.getMethod())));
+                          session.sendResponse(error);
+                          continue;
+                        } finally {
+                          session.close();
+                        }
                       }
                       handle(session, request);
                     }
@@ -159,6 +182,7 @@ public class Server extends UnicastRemoteObject implements IServer {
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean register(String host, int port) throws RemoteException {
     if (host == null) {
       throw new NullPointerException("'host' must not be null");
@@ -209,10 +233,14 @@ public class Server extends UnicastRemoteObject implements IServer {
     }
 
     if (nodes.isEmpty()) {
-      HTTPResponse error = new HTTPResponse();
-      error.setContent(getSevereErrorPage(new IllegalStateException("No Cluster Nodes connected")));
-      session.sendResponse(error);
-      return;
+      try {
+        HTTPResponse error = new HTTPResponse();
+        error.setContent(getSevereErrorPage(new IllegalStateException("No Cluster Nodes connected")));
+        session.sendResponse(error);
+        return;
+      } finally {
+        session.close();
+      }
     }
 
     service.execute(new Handle(session, request, nodes.next()));
@@ -244,6 +272,7 @@ public class Server extends UnicastRemoteObject implements IServer {
     }
 
     /** {@inheritDoc} */
+    @Override
     public void run() {
       try {
         String uri = request.getLocation();
