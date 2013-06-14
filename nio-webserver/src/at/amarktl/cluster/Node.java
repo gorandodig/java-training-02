@@ -29,14 +29,14 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
   /** {@inheritDoc} */
   @Override
   public String getIdentifier() throws RemoteException {
-    return name;
+    return name + "@" + address + ":" + port;
   }
 
   @Override
   public void connect(String server, int serverport) throws RemoteException {
     initRMI();
 
-    System.out.println("Cluster Node [" + name + "@" + address + ":" + port + "] initialized");
+    System.out.println("Cluster Node [" + getIdentifier() + "] initialized");
 
     register(server, serverport);
   }
@@ -170,4 +170,41 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
 
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      throw new NullPointerException("'obj' must not be null");
+    }
+
+    if (obj == this) {
+      return true;
+    }
+
+    if (!(obj instanceof IClusterNode)) {
+      return false;
+    }
+
+    IClusterNode n = (IClusterNode) obj;
+
+    try {
+      if (!n.getIdentifier().equals(getIdentifier())) {
+        return false;
+      }
+    } catch (RemoteException e) {
+      throw new IllegalStateException(e);
+    }
+
+    return true;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    int result = 17;
+    result = result + 17 + name.hashCode();
+    result = result + 17 + address.hashCode();
+    result = result + 17 + port;
+    return result;
+  }
 }

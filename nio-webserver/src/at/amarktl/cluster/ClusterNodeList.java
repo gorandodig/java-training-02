@@ -14,6 +14,10 @@ class ClusterNodeList {
     if (node == null) {
       throw new NullPointerException("'node' must not be null");
     }
+
+    //remove any old reference first
+    nodes.remove(node);
+
     nodes.add(node);
   }
 
@@ -25,11 +29,11 @@ class ClusterNodeList {
     return nodes.get(idx);
   }
 
-  public boolean isEmpty() {
+  public synchronized boolean isEmpty() {
     return nodes.isEmpty();
   }
 
-  public List<IClusterNode> getClusterNodes() {
+  public synchronized List<IClusterNode> getClusterNodes() {
     return Collections.unmodifiableList(nodes);
   }
 

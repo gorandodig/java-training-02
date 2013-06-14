@@ -165,7 +165,8 @@ public class Server extends UnicastRemoteObject implements IServer {
                 try {
                   lock.wait(timeout);
                 } catch (InterruptedException e) {
-                  System.err.println("Interrpted while waiting due to [" + e.getMessage() + "]");
+                  System.err.println("Interrupted while waiting due to [" + e.getMessage() + "]");
+                  e.printStackTrace();
                 }
               }
             }
@@ -178,7 +179,7 @@ public class Server extends UnicastRemoteObject implements IServer {
 
   final Object lock = new Object();
   private static final long serialVersionUID = 1L;
-  long timeout = 100;
+  long timeout = 2;
   final ClusterNodeList nodes = new ClusterNodeList();
   private int portHTTP;
   private int portRMI;
