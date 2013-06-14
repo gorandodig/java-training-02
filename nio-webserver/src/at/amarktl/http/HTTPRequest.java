@@ -44,6 +44,13 @@ public class HTTPRequest {
     return headers.get(key);
   }
 
+  /**
+   * @return the version
+   */
+  public String getVersion() {
+    return version;
+  }
+
   /** {@inheritDoc} */
   @Override
   public String toString() {

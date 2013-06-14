@@ -12,7 +12,7 @@ public class Main {
     int portRMI = 1099;
     String serverAddress = "127.0.0.1";
 
-    Server s = new Server(portRMI, 8080, 10);
+    Server s = new Server("127.0.0.1", portRMI, 8080, 10);
     s.start();
 
     IClusterNode n1 = new Node("N1", "127.0.0.1", 2099, 10);

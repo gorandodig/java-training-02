@@ -2,6 +2,7 @@
 package at.amarktl.cluster;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 class ClusterNodeList {
@@ -26,6 +27,10 @@ class ClusterNodeList {
 
   public boolean isEmpty() {
     return nodes.isEmpty();
+  }
+
+  public List<IClusterNode> getClusterNodes() {
+    return Collections.unmodifiableList(nodes);
   }
 
 }

@@ -15,7 +15,7 @@ public class HTTPResponse {
 
   void addDefaultHeaders() {
     getHeaders().put("Date", new Date().toString());
-    getHeaders().put("Server", "Java NIO Webserver by md_5");
+    getHeaders().put("Server", "Java NIO Webserver");
     getHeaders().put("Connection", "close");
     getHeaders().put("Content-Length", Integer.toString(content.length));
   }

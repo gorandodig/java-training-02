@@ -24,6 +24,11 @@ import at.amarktl.http.HTTPSession;
 
 public class Server extends UnicastRemoteObject implements IServer {
 
+  /**
+   * Valid values / range for WEB_SRV_MASTER: TODO
+   */
+  private static final String RMI_IDENTIFIER = "web-srv-master";
+
   private class HTTPServer {
     private ExecutorService service = Executors.newSingleThreadExecutor();
 
@@ -40,10 +45,31 @@ public class Server extends UnicastRemoteObject implements IServer {
     }
 
     public void shutdown() {
-      //TODO
+      isRunning.getAndSet(false);
+
+      try {
+        server.close();
+        server = null;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+
+      try {
+        selector.close();
+        selector = null;
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+
+      service.shutdownNow();
+
     }
 
     public void start() {
+      if (isStarted.get()) {
+        throw new IllegalStateException("Server Instance already started");
+      }
+
       service.execute(new Runnable() {
         @Override
         public void run() {
@@ -130,6 +156,14 @@ public class Server extends UnicastRemoteObject implements IServer {
 
             } catch (IOException e) {
               shutdown();
+            } finally {
+              synchronized (lock) {
+                try {
+                  lock.wait(timeout);
+                } catch (InterruptedException e) {
+                  System.err.println(e.getMessage());
+                }
+              }
             }
           }
         }
@@ -138,12 +172,17 @@ public class Server extends UnicastRemoteObject implements IServer {
 
   }
 
+  final Object lock = new Object();
   private static final long serialVersionUID = 1L;
-
+  long timeout = 100;
   final ClusterNodeList nodes = new ClusterNodeList();
   private int portHTTP;
   private int portRMI;
   private final ExecutorService service;
+  AtomicBoolean isStarted = new AtomicBoolean(false);
+  AtomicBoolean isShutdownInProgress = new AtomicBoolean(false);
+  private Registry registry;
+  private HTTPServer httpServer;
 
   static final byte[] getSevereErrorPage(Exception e) {
     /** @formatter:off*/
@@ -162,12 +201,14 @@ public class Server extends UnicastRemoteObject implements IServer {
     return error.getBytes(Charset.forName("UTF-8"));
   }
 
-  /**
-   * @param threadPoolSize TODO
-   * @throws RemoteException
-   */
-  public Server(int portRMI, int portHTTP, int threadPoolSize) throws RemoteException {
+  public Server(String externalAddress, int portRMI, int portHTTP, int threadPoolSize) throws RemoteException {
     super();
+    if (externalAddress == null) {
+      throw new NullPointerException("'externalAddress' must not be null");
+    }
+    if (externalAddress.trim().length() == 0) {
+      throw new IllegalArgumentException("'externalAddress' must not be empty");
+    }
     if (portRMI <= 0) {
       throw new IllegalArgumentException("'portRMI' must not be less or equal than 0");
     }
@@ -177,6 +218,8 @@ public class Server extends UnicastRemoteObject implements IServer {
     if (threadPoolSize <= 0) {
       throw new IllegalArgumentException("'threadPoolSize' must not be less or equal than 0");
     }
+
+    System.getProperties().setProperty("java.rmi.server.hostname", externalAddress);
 
     this.portRMI = portRMI;
     this.portHTTP = portHTTP;
@@ -197,8 +240,17 @@ public class Server extends UnicastRemoteObject implements IServer {
       throw new IllegalArgumentException("'port' must not be less or equal than 0");
     }
 
+    if (!isStarted.get()) {
+      throw new IllegalStateException("Server Instance not started");
+    }
+
+    if (isShutdownInProgress.get()) {
+      throw new IllegalStateException("Server Instance is performing Shutdown");
+    }
+
     Registry node = LocateRegistry.getRegistry(host, port);
     IClusterNode nodeImpl = null;
+
     try {
       nodeImpl = (IClusterNode) node.lookup("cluster-node");
     } catch (NotBoundException e) {
@@ -221,9 +273,33 @@ public class Server extends UnicastRemoteObject implements IServer {
   }
 
   public void start() throws IOException {
+
+    Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownInstanceShutdownHook(this)));
+
     startRMIServer();
+
     startSocketServer();
+
+    isStarted.getAndSet(true);
+
     System.out.println("Web Server Master is ready");
+
+  }
+
+  private class ShutdownInstanceShutdownHook implements Runnable {
+
+    private final Server instance;
+
+    public ShutdownInstanceShutdownHook(Server instance) {
+      this.instance = instance;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void run() {
+      instance.shutdown();
+    }
+
   }
 
   void handle(HTTPSession session, HTTPRequest request) {
@@ -252,16 +328,40 @@ public class Server extends UnicastRemoteObject implements IServer {
     service.execute(new Handle(session, request, nodes.next()));
   }
 
+  public void shutdown() {
+    if (isShutdownInProgress.get()) {
+      throw new IllegalStateException("Shutdown already in progress");
+    }
+
+    try {
+      isShutdownInProgress.getAndSet(true);
+      if (registry != null) {
+        try {
+          registry.unbind(RMI_IDENTIFIER);
+          registry = null;
+        } catch (RemoteException | NotBoundException e) {
+          e.printStackTrace();
+        }
+      }
+
+      if (httpServer != null) {
+        httpServer.shutdown();
+        httpServer = null;
+      }
+
+      isStarted.getAndSet(false);
+    } finally {
+      isShutdownInProgress.getAndSet(false);
+    }
+
+  }
+
   private class Handle implements Runnable {
 
     private IClusterNode node;
     private HTTPSession session;
     private HTTPRequest request;
 
-    /**
-     * @param channel
-     * @param node
-     */
     public Handle(HTTPSession session, HTTPRequest request, IClusterNode node) {
       if (session == null) {
         throw new NullPointerException("'session' must not be null");
@@ -307,8 +407,8 @@ public class Server extends UnicastRemoteObject implements IServer {
 
   private void startRMIServer() {
     try {
-      Registry registry = LocateRegistry.createRegistry(portRMI);
-      registry.rebind("web-srv-master", this);
+      registry = LocateRegistry.createRegistry(portRMI);
+      registry.rebind(RMI_IDENTIFIER, this);
     } catch (Exception e) {
       e.printStackTrace();
       System.exit(-1);
@@ -316,7 +416,7 @@ public class Server extends UnicastRemoteObject implements IServer {
   }
 
   private void startSocketServer() throws IOException {
-    HTTPServer httpServer = new HTTPServer(new InetSocketAddress(portHTTP));
+    httpServer = new HTTPServer(new InetSocketAddress(portHTTP));
     httpServer.start();
   }
 }

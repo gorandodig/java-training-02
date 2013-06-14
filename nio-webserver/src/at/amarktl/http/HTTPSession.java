@@ -18,9 +18,6 @@ public final class HTTPSession {
     this.channel = channel;
   }
 
-  /**
-   * Try to read a line.
-   */
   public String readLine() throws IOException {
     StringBuilder sb = new StringBuilder();
     int l = -1;
@@ -40,9 +37,6 @@ public final class HTTPSession {
     return null;
   }
 
-  /**
-   * Get more data from the stream.
-   */
   public void readData() throws IOException {
     buffer.limit(buffer.capacity());
     int read = channel.read(buffer);
@@ -65,7 +59,12 @@ public final class HTTPSession {
         writeLine(header.getKey() + ": " + header.getValue());
       }
       writeLine("");
-      channel.write(ByteBuffer.wrap(response.getContent()));
+
+      ByteBuffer buffer = ByteBuffer.wrap(response.getContent());
+      while (buffer.remaining() > 0) {
+        channel.write(buffer);
+      }
+
       System.out.println("Send HTTP response");
     } catch (IOException ex) {
       // slow silently
@@ -75,7 +74,8 @@ public final class HTTPSession {
   public void close() {
     try {
       channel.close();
-    } catch (IOException ex) {
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 

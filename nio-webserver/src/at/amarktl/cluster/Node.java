@@ -17,18 +17,22 @@ import java.util.concurrent.ThreadFactory;
 
 public class Node extends UnicastRemoteObject implements IClusterNode {
 
+  private static final String RMI_IDENTIFIER_NODE = "cluster-node";
+  private static final String RMI_IDENTIFIER_MASTER = "web-srv-master";
   private static final long serialVersionUID = 1L;
-  private int port;
-  private String address;
-  private String name;
+  int port;
+  String address;
+  String name;
 
   private ExecutorService handles = null;
 
   /** {@inheritDoc} */
+  @Override
   public String getIdentifier() throws RemoteException {
     return name;
   }
 
+  @Override
   public void connect(String server, int serverport) throws RemoteException {
     initRMI();
 
@@ -40,7 +44,7 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
   private void initRMI() {
     try {
       Registry registry = LocateRegistry.createRegistry(port);
-      registry.rebind("cluster-node", this);
+      registry.rebind(RMI_IDENTIFIER_NODE, this);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -48,20 +52,17 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
 
   private void register(String host, int port) {
     try {
+      System.out.println("Trying to register Cluster Node [" + name + "@" + address + ":" + this.port + "]  @ server [" + host + ":" + port + "]");
       Registry myRegistry = LocateRegistry.getRegistry(host, port);
-      IServer master = (IServer) myRegistry.lookup("web-srv-master");
+      IServer master = (IServer) myRegistry.lookup(RMI_IDENTIFIER_MASTER);
       boolean registered = master.register(address, this.port);
-      System.out.println("Registered Cluster Node: " + registered);
+      System.out.println("Finished to register Cluster Node [" + name + "@" + address + ":" + this.port + "]  @ server [" + host + ":" + port + "]: "
+        + registered);
     } catch (Exception e) {
-      System.err.println(e.getMessage());
       e.printStackTrace();
     }
   }
 
-  /**
-   * @param threadPoolSize TODO
-   * @throws RemoteException
-   */
   public Node(String name, String address, int port, int threadPoolSize) throws RemoteException {
     super();
 
@@ -87,11 +88,14 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
       throw new IllegalArgumentException("'threadPoolSize' must not be less or equal than 0");
     }
 
+    System.getProperties().setProperty("java.rmi.server.hostname", address);
+
     this.name = name;
     this.address = address;
     this.port = port;
 
     this.handles = Executors.newFixedThreadPool(threadPoolSize, new ThreadFactory() {
+      @Override
       public Thread newThread(Runnable r) {
         return new Thread(r);
       }
@@ -99,6 +103,7 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
   }
 
   /** {@inheritDoc} */
+  @Override
   public byte[] loadFile(String uri) throws RemoteException {
     if (uri == null) {
       Exception e = new NullPointerException("'uri' must not be null");
@@ -135,12 +140,13 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
     }
 
     /** {@inheritDoc} */
+    @Override
     public byte[] call() throws Exception {
 
       //FIXME do not use 'user.dir' use some webhome setting...
       File f = new File(System.getProperty("user.dir") + uri);
 
-      System.out.println("[" + name + "@" + address + ":" + port + "] loading file from URI [" + f.getAbsolutePath() + "]");
+      System.out.println("[" + getIdentifier() + "] loading file from URI [" + f.getAbsolutePath() + "]");
 
       BufferedReader reader = null;
 
