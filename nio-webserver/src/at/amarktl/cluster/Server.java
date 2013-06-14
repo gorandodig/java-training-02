@@ -161,7 +161,7 @@ public class Server extends UnicastRemoteObject implements IServer {
                 try {
                   lock.wait(timeout);
                 } catch (InterruptedException e) {
-                  System.err.println(e.getMessage());
+                  System.err.println("Interrpted while waiting due to [" + e.getMessage() + "]");
                 }
               }
             }
@@ -415,9 +415,14 @@ public class Server extends UnicastRemoteObject implements IServer {
     }
   }
 
-  private void startSocketServer() throws IOException {
-    httpServer = new HTTPServer(new InetSocketAddress(portHTTP));
-    httpServer.start();
+  private void startSocketServer() {
+    try {
+      httpServer = new HTTPServer(new InetSocketAddress(portHTTP));
+      httpServer.start();
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.exit(-1);
+    }
   }
 }
 

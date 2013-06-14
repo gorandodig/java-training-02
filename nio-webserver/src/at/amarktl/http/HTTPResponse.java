@@ -4,6 +4,7 @@ package at.amarktl.http;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class HTTPResponse {
 
@@ -56,11 +57,17 @@ public class HTTPResponse {
     return version;
   }
 
-  /**
-   * @return the headers
-   */
   public Map<String, String> getHeaders() {
     return headers;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    StringBuilder s = new StringBuilder();
+    for (Entry<String, String> header : headers.entrySet()) {
+      s.append(header.getKey() + "\t = " + header.getValue()+"\n");
+    }
+    return s.toString();
+  }
 }
