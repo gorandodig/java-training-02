@@ -110,7 +110,9 @@ public class Server extends UnicastRemoteObject implements IServer {
                     }
                     try {
                       HTTPResponse error = new HTTPResponse();
-                      error.setContent(getSevereErrorPage(new IllegalStateException("No Cluster Nodes connected")));
+                      IllegalStateException e = new IllegalStateException("No Cluster Nodes connected");
+                      e.printStackTrace();
+                      error.setContent(getSevereErrorPage(e));
                       session.sendResponse(error);
                       continue;
                     } finally {
@@ -140,7 +142,9 @@ public class Server extends UnicastRemoteObject implements IServer {
                       if (!request.getMethod().equals("GET")) {
                         try {
                           HTTPResponse error = new HTTPResponse();
-                          error.setContent(getSevereErrorPage(new UnsupportedOperationException("Unsupported Operation: " + request.getMethod())));
+                          UnsupportedOperationException e = new UnsupportedOperationException("Unsupported Operation: " + request.getMethod());
+                          e.printStackTrace();
+                          error.setContent(getSevereErrorPage(e));
                           session.sendResponse(error);
                           continue;
                         } finally {
@@ -313,7 +317,9 @@ public class Server extends UnicastRemoteObject implements IServer {
     if (nodes.isEmpty()) {
       try {
         HTTPResponse error = new HTTPResponse();
-        error.setContent(getSevereErrorPage(new IllegalStateException("No Cluster Nodes connected")));
+        IllegalStateException e = new IllegalStateException("No Cluster Nodes connected");
+        e.printStackTrace();
+        error.setContent(getSevereErrorPage(e));
         session.sendResponse(error);
         return;
       } finally {
@@ -395,6 +401,7 @@ public class Server extends UnicastRemoteObject implements IServer {
         response.setContent(b);
         session.sendResponse(response);
       } catch (Exception e) {
+        e.printStackTrace();
         HTTPResponse error = new HTTPResponse();
         error.setContent(getSevereErrorPage(new IllegalStateException(e)));
         session.sendResponse(error);
