@@ -179,7 +179,7 @@ public class Server extends UnicastRemoteObject implements IServer {
 
   final Object lock = new Object();
   private static final long serialVersionUID = 1L;
-  long timeout = 2;
+  long timeout = 50;
   final ClusterNodeList nodes = new ClusterNodeList();
   private int portHTTP;
   private int portRMI;
