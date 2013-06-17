@@ -159,11 +159,14 @@ public class Server extends UnicastRemoteObject implements IServer {
               }
 
             } catch (IOException e) {
+              e.printStackTrace();
               shutdown();
             } finally {
               synchronized (lock) {
                 try {
-                  lock.wait(timeout);
+                  if (isRunning.get()) {
+                    lock.wait(timeout);
+                  }
                 } catch (InterruptedException e) {
                   System.err.println("Interrupted while waiting due to [" + e.getMessage() + "]");
                   e.printStackTrace();
