@@ -1,10 +1,7 @@
 
 package at.amarktl.cluster;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.nio.charset.Charset;
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -15,10 +12,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 
+import at.amarktl.bootstrap.Repository;
+import at.amarktl.properties.Properties;
+
 public class Node extends UnicastRemoteObject implements IClusterNode {
 
   private static final String RMI_IDENTIFIER_NODE = "cluster-node";
   private static final String RMI_IDENTIFIER_MASTER = "web-srv-master";
+  Repository repository = null;
   private static final long serialVersionUID = 1L;
   int port;
   String address;
@@ -94,6 +95,12 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
     this.address = address;
     this.port = port;
 
+    try {
+      this.repository = new Repository(getIdentifier());
+    } catch (IOException e) {
+      throw new RemoteException(e.getMessage());
+    }
+
     this.handles = Executors.newFixedThreadPool(threadPoolSize, new ThreadFactory() {
       @Override
       public Thread newThread(Runnable r) {
@@ -113,6 +120,7 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
       Exception e = new IllegalArgumentException("'uri' must not be empty");
       throw new RemoteException(e.getMessage(), e);
     }
+
     Future<byte[]> response = handles.submit(new Handle(uri));
     try {
       return response.get();
@@ -135,37 +143,10 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
       this.uri = uri;
     }
 
-    private String getIdentifier() {
-      return Node.this.name + "@" + Node.this.address + ":" + Node.this.port;
-    }
-
     /** {@inheritDoc} */
     @Override
     public byte[] call() throws Exception {
-
-      //FIXME do not use 'user.dir' use some webhome setting...
-      File f = new File(System.getProperty("user.dir") + uri);
-
-      System.out.println("[" + getIdentifier() + "] loading file from URI [" + f.getAbsolutePath() + "]");
-
-      BufferedReader reader = null;
-
-      try {
-        reader = new BufferedReader(new FileReader(f));
-        StringBuilder response = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-          response.append(line);
-        }
-
-        byte[] b = response.toString().getBytes(Charset.forName("UTF-8"));
-        System.out.println("[" + name + "@" + address + ":" + port + "] finished loading file from URI [" + f.getAbsolutePath() + "]");
-        return b;
-      } finally {
-        if (reader != null) {
-          reader.close();
-        }
-      }
+      return repository.get(Properties.WEBHOME + uri);
     }
 
   }
