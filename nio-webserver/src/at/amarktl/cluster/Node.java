@@ -89,7 +89,7 @@ public class Node extends UnicastRemoteObject implements IClusterNode {
       throw new IllegalArgumentException("'threadPoolSize' must not be less or equal than 0");
     }
 
-    System.getProperties().setProperty("java.rmi.server.hostname", address);
+    System.setProperty("java.rmi.server.hostname", address);
 
     this.name = name;
     this.address = address;

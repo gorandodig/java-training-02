@@ -227,7 +227,7 @@ public class Server extends UnicastRemoteObject implements IServer {
       throw new IllegalArgumentException("'threadPoolSize' must not be less or equal than 0");
     }
 
-    System.getProperties().setProperty("java.rmi.server.hostname", externalAddress);
+    System.setProperty("java.rmi.server.hostname", externalAddress);
 
     this.portRMI = portRMI;
     this.portHTTP = portHTTP;
