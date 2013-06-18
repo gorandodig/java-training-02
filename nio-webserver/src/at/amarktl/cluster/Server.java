@@ -32,7 +32,7 @@ public class Server extends UnicastRemoteObject implements IServer {
   private class HTTPServer {
     private ExecutorService service = Executors.newSingleThreadExecutor();
 
-    AtomicBoolean isRunning = new AtomicBoolean(true);
+    volatile boolean isRunning = true;
     Selector selector = null;
     ServerSocketChannel server = null;
 
@@ -45,7 +45,7 @@ public class Server extends UnicastRemoteObject implements IServer {
     }
 
     public void shutdown() {
-      isRunning.getAndSet(false);
+      isRunning = false;
 
       try {
         server.close();
@@ -73,7 +73,7 @@ public class Server extends UnicastRemoteObject implements IServer {
       service.execute(new Runnable() {
         @Override
         public void run() {
-          while (isRunning.get()) {
+          while (isRunning) {
             int readyCount;
             try {
               readyCount = selector.selectNow();
@@ -164,7 +164,7 @@ public class Server extends UnicastRemoteObject implements IServer {
             } finally {
               synchronized (lock) {
                 try {
-                  if (isRunning.get()) {
+                  if (isRunning) {
                     lock.wait(timeout);
                   }
                 } catch (InterruptedException e) {
