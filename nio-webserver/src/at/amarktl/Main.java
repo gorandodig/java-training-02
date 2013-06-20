@@ -4,11 +4,13 @@ package at.amarktl;
 import at.amarktl.cluster.IClusterNode;
 import at.amarktl.cluster.Node;
 import at.amarktl.cluster.Server;
+import at.amarktl.config.Config;
 
 public class Main {
 
   public static void main(String[] args) throws Exception {
-
+    Config c = new Config("cfg/config.xml");
+    c.getValueForTag("server-address");
     int portRMI = 1099;
     String serverAddress = "127.0.0.1";
 
