@@ -2,6 +2,7 @@
 package at.amarktl.config;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -14,22 +15,28 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-public class Config {
+public class Config implements FileChangeListener {
 
   private final static String WEB_SERVER_CFG = "web-server";
   private Element webServerNode;
 
-  public Config(String filePath) {
+  public Config(String filePath) throws FileNotFoundException {
+    File file = new File(filePath);
+    parseFile(file);
+    FileMonitor.getInstance().addFileChangeListener(this, file, 2);
+  }
+
+  private void parseFile(File file) {
     try {
-      File stocks = new File(filePath);
+
       DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
       DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-      Document doc = dBuilder.parse(stocks);
+      Document doc = dBuilder.parse(file);
       doc.getDocumentElement().normalize();
 
       NodeList nodes = doc.getElementsByTagName(WEB_SERVER_CFG);
-      if (nodes == null) {
-        throw new ParserConfigurationException("tag \"webserver\" not found!");
+      if (nodes == null || nodes.getLength() == 0) {
+        throw new ParserConfigurationException("tag \"web-server\" not found!");
       }
       for (int i = 0; i < nodes.getLength(); i++) {
         Node node = nodes.item(i);
@@ -88,6 +95,11 @@ public class Config {
     }
 
     return node.getNodeValue();
+  }
+
+  @Override
+  public void fileChanged(File file) {
+    parseFile(file);
   }
 
 }
